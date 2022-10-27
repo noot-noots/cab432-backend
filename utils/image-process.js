@@ -10,9 +10,12 @@ const imageProcess = async (req) => {
     }
   });
 
-  const formattedName = req.file.originalname.split(" ").join("-");
-  const fileName = "altered-" + formattedName;
   const image = req.file.buffer;
+  const base64_image = image.toString('base64').substring(100, 116);
+  const formattedName = req.file.originalname.split(" ").join("-");
+  const fileExtension = req.file.originalname.split(".")[1];
+  // Add date time to file name to avoid overwriting
+  const fileName = `${base64_image}-${Date.now()}.${fileExtension}`; 
 
   // await sharp(image)
   //   .resize(700)
@@ -20,6 +23,7 @@ const imageProcess = async (req) => {
   //     console.log(err, info);
   //   });
 
+  // Process image
   const alteredImage = await sharp(image)
 
   if (resize) {
@@ -39,8 +43,8 @@ const imageProcess = async (req) => {
   if (rotate) alteredImage.rotate(+rotate);
   if (flip) alteredImage.flip();
   if (flop) alteredImage.flop();
-  if (sharpen) alteredImage.sharpen();
-  if (blur) alteredImage.blur();
+  if (sharpen) alteredImage.sharpen({sigma: +sharpen});
+  if (blur) alteredImage.blur(+blur);
 
   alteredImage.toFile(`./images/${fileName}`, (err, info) => {
     console.log(err, info);
