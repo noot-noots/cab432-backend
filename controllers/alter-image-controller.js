@@ -1,15 +1,28 @@
 const { imageProcess } = require("../utils/image-process");
+const fs = require("fs");
+const { create } = require("domain");
 
 const alterImage = async (req, res, next) => {
   // console.log('file', req.file)
   // console.log('body', req.body)
 
-  const fileName = await imageProcess(req);
+  const fileInfo = await imageProcess(req);
+  const fileName = fileInfo.fileName;
+  const error = fileInfo.error
+  const imagePath = `${process.env.URL}/images/${fileName}`;
 
-  res.json({ 
+  if (error) {
+    res.json({
+      message: "Image not generated, please check you query!"
+    });
+  }
+  else{
+    res.json({
     message: "Image successfully modified!",
-    image: `${process.env.URL}/images/${fileName}`
-   });
+    image: imagePath,
+  });
+  }
+  
 };
 
 exports.alterImage = alterImage;

@@ -11,46 +11,48 @@ const imageProcess = async (req) => {
   });
 
   const image = req.file.buffer;
-  const base64_image = image.toString('base64').substring(100, 116);
+  const base64_image = image.toString("base64").substring(100, 116);
   const formattedName = req.file.originalname.split(" ").join("-");
   const fileExtension = req.file.originalname.split(".")[1];
   // Add date time to file name to avoid overwriting
-  const fileName = `${base64_image}-${Date.now()}.${fileExtension}`; 
-
-  // await sharp(image)
-  //   .resize(700)
-  //   .toFile(`./images/${fileName}`, (err, info) => {
-  //     console.log(err, info);
-  //   });
-
+  const fileName = `${base64_image}-${Date.now()}.${fileExtension}`;
+  let error = false;
   // Process image
-  const alteredImage = await sharp(image)
+  const alteredImage = sharp(image);
 
-  if (resize) {
-    try {
-    alteredImage.resize(+resize)
-    } catch {
-      const dimensions = resize.split('x')
+  try {
+    if (resize) {
+      const dimensions = resize.split("x");
 
-      alteredImage.resize({
-        width: +dimensions[0], 
-        height: +dimensions[1],
-        fit: sharp.fit.fill
-      })
+      alteredImage.resize(
+        dimensions[0] === "null" ? null : +dimensions[0],
+        dimensions[1] === "null" ? null : +dimensions[1],
+        {
+          fit: sharp.fit.fill,
+        }
+      );
     }
+
+    if (rotate) alteredImage.rotate(+rotate);
+    if (flip) alteredImage.flip();
+    if (flop) alteredImage.flop();
+    if (sharpen) alteredImage.sharpen({ sigma: +sharpen });
+    if (blur) alteredImage.blur(+blur);
+
+
+    alteredImage.toFile(`./images/${fileName}`, (err, info) => {
+      console.log(err, info);
+    });
+    
+  } catch (err) {
+    console.log(err);
+    error = true;
   }
 
-  if (rotate) alteredImage.rotate(+rotate);
-  if (flip) alteredImage.flip();
-  if (flop) alteredImage.flop();
-  if (sharpen) alteredImage.sharpen({sigma: +sharpen});
-  if (blur) alteredImage.blur(+blur);
-
-  alteredImage.toFile(`./images/${fileName}`, (err, info) => {
-    console.log(err, info);
-  });
-
-  return fileName;
+  return {
+    fileName,
+    error : error
+  };
 };
 
 exports.imageProcess = imageProcess;
