@@ -13,23 +13,8 @@ const createKey = (req) => {
   
     const image = req.file.buffer;
     const base64_image = image.toString("base64").substring(100, 116);
-  
-    key =
-      resize +
-      "-" +
-      rotate +
-      "-" +
-      flip +
-      "-" +
-      flop +
-      "-" +
-      sharpen +
-      "-" +
-      blur +
-      "-" +
-      base64_image +
-      "." +
-      fileExtension;
+
+    key = `${resize}-${rotate}-${flip}-${flop}-${sharpen}-${blur}-${base64_image}.${fileExtension}`
   
     return encodeURI(key);
 };
