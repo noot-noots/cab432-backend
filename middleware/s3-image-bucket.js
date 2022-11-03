@@ -1,7 +1,9 @@
 require("dotenv").config();
-const fs = require('fs');
+const fs = require("fs");
 const AWS = require("aws-sdk");
 const { imageProcess } = require("../utils/image-process");
+const { redisClient } = require("./ec-image-cache");
+const { createKey } = require("../utils/create-key");
 const s3 = new AWS.S3({ apiVersion: "2006-03-01" });
 
 // s3 setup
@@ -17,111 +19,98 @@ s3.createBucket({ Bucket: bucketName })
     }
   });
 
-
 const getS3Image = (req, res, next) => {
-
   const fileExtension = req.file.originalname.split(".")[1];
-  const s3Key = createS3Key(req, fileExtension);
+  const s3Key = req.query.key ? req.query.key : createKey(req);
 
-  // Find if image exists in s3
-  const params = {Bucket: bucketName, Key: s3Key};
+  const params = { Bucket: bucketName, Key: s3Key };
 
-  s3.getSignedUrl
+  s3.getSignedUrl;
 
+  // Find if image exists in s3, if not create and store the image
   s3.getObject(params)
     .promise()
     .then(() => {
       //Serve from s3
       res.json({
         message: `Served from s3`,
-        image: `https://${bucketName}.s3.amazonaws.com/${s3Key}`
+        image: `https://${bucketName}.s3.amazonaws.com/${s3Key}`,
       });
+
+      // Store in redis
+      redisClient
+        .setEx(
+          s3Key,
+          3600, // Expire Key in 1 day
+          JSON.stringify({
+            message: `Served from redis`,
+            image: `https://${bucketName}.s3.amazonaws.com/${s3Key}`,
+          })
+        )
+        .catch((e) => console.log(e));
     })
     .catch(async (err) => {
-
-      console.log(err)
-      
       if (err.statusCode === 404) {
+        // Generate Image
 
         const fileInfo = await imageProcess(req);
         const fileName = fileInfo.fileName;
-        const error = fileInfo.error
+        const error = fileInfo.error;
         const imagePath = `./images/${fileName}`;
 
-        console.log('This is the file path' + imagePath)
+        console.log("This is the file path" + imagePath);
 
         setTimeout(async () => {
           if (error) {
             res.json({
-              message: "Image not generated, please check you query!"
+              message: "Image not generated, please check you query!",
             });
-          }
-          else{
-            
+          } else {
             const body = fs.readFileSync(imagePath);
             const objectParams = {
-              Bucket: bucketName, 
+              Bucket: bucketName,
               Key: s3Key,
               ContentType: `image/${fileExtension}`,
-              Body: body}
+              Body: body,
+            };
 
-            await s3.upload(objectParams).promise()
-            .then((data) => {
-              console.log(data)
-              console.log(
-                `Successfully uploaded data to ${bucketName}/${s3Key}`
-              )
+            await s3
+              .upload(objectParams)
+              .promise()
+              .then((data) => {
+                console.log(data);
+                console.log(
+                  `Successfully uploaded data to ${bucketName}/${s3Key}`
+                );
 
-              res.json({
-              message: `Image stored in s3`,
-              image: data.Location
-            })
-            
-            // Deletes the image locally
-            fs.rmSync(imagePath)
-            })
-            .catch((err) => res.json(err))
+                res.json({
+                  message: `Image stored in s3`,
+                  image: data.Location,
+                });
 
+                // Store in redis
+                redisClient
+                  .setEx(
+                    s3Key,
+                    3600, // Expire key in 1 day
+                    JSON.stringify({
+                      message: `Served from redis`,
+                      image: `https://${bucketName}.s3.amazonaws.com/${s3Key}`,
+                    })
+                  )
+                  .catch((e) => console.log(e));
 
-            
-            
-            // s3.putObject(objectParams)
-            //   .promise()
-            //   .then((result) => {
-  
-            //     console.log(
-            //       `Successfully uploaded data to ${bucketName}/${s3Key}`
-            //     )
-            //     res.json({
-            //       message: `Image did not exist in s3 and has now been stored`,
-            //     })
-  
-            //     console.log(result)
-            //   })
-            //   .catch((err) => res.json(err))
+                // Deletes the image locally
+                fs.rmSync(imagePath);
+              })
+              .catch((err) => res.json(err));
           }
-        }, 5000)
-
-        
+        }, 5000);
       } else {
-        console.log(s3Key)
-
         // something went wrong
         res.json(err);
       }
-    })
-}
-
-const createS3Key = (req, fileExtension) => {
-  let s3Key = ``;
-  const { resize, rotate, flip, flop, sharpen, blur } = req.query;
-
-  const image = req.file.buffer;
-  const base64_image = image.toString('base64').substring(100, 116);
-
-  s3Key = resize + '-' + rotate + '-' + flip + '-' + flop + '-' + sharpen + '-' + blur + '-' + base64_image + '.' + fileExtension;
-
-  return s3Key;
-}
+    });
+};
 
 exports.getS3Image = getS3Image;

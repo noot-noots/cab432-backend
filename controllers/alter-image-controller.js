@@ -3,8 +3,6 @@ const fs = require("fs");
 const { create } = require("domain");
 
 const alterImage = async (req, res, next) => {
-  // console.log('file', req.file)
-  // console.log('body', req.body)
 
   const fileInfo = await imageProcess(req);
   const fileName = fileInfo.fileName;

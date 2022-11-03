@@ -11,15 +11,15 @@ const imageProcess = async (req) => {
   });
 
   const image = req.file.buffer;
-  const base64_image = image.toString("base64").substring(100, 116);
-  const formattedName = req.file.originalname.split(" ").join("-");
   const fileExtension = req.file.originalname.split(".")[1];
-  // Add date time to file name to avoid overwriting
-  const fileName = `${base64_image}-${Date.now()}.${fileExtension}`;
   let error = false;
+
+  // Add date time to file name to avoid overwriting
+  const fileName = `${Date.now()}.${fileExtension}`;
+
+
   // Process image
   const alteredImage = sharp(image);
-
   try {
     if (resize) {
       const dimensions = resize.split("x");
@@ -45,8 +45,10 @@ const imageProcess = async (req) => {
     });
     
   } catch (err) {
+    console.log('wrong file format')
     console.log(err);
     error = true;
+    throw {message: 'Could not alter image, please check if query and file is valid!', status: 403}
   }
 
   return {
