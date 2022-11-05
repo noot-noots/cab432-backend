@@ -41,7 +41,9 @@ const imageProcess = async (req) => {
 
 
     alteredImage.toFile(`./images/${fileName}`, (err, info) => {
-      console.log(err, info);
+      if (err) {
+        console.log(err, info);
+      }
     });
     
   } catch (err) {

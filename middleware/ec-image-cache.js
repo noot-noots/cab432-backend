@@ -2,9 +2,11 @@ require("dotenv");
 const redis = require("redis");
 const { createKey } = require("../utils/create-key");
 
-const redisClient = redis.createClient({
+const redisClient = redis.createClient(
+  {
   url: process.env.REDIS_ENDPOINT,
-});
+}
+);
 
 let redisOnline = true;
 
