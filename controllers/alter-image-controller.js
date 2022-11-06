@@ -3,7 +3,6 @@ const fs = require("fs");
 const { create } = require("domain");
 
 const alterImage = async (req, res, next) => {
-  console.log('here')
   const fileInfo = await imageProcess(req);
   const fileName = fileInfo.fileName;
   const error = fileInfo.error;
@@ -19,8 +18,13 @@ const alterImage = async (req, res, next) => {
       image: imagePath,
     });
     setTimeout(() => {
-      fs.rmSync(`./images/${fileName}`);
-    }, 10000)
+      try {
+        fs.rmSync(`./images/${fileName}`);
+      } catch (e) {
+        console.log(e)
+      }
+      console.log("local image removed")
+    }, 3600000)
   }
 };
 

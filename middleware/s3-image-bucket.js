@@ -8,33 +8,12 @@ const s3 = new AWS.S3({ apiVersion: "2006-03-01" });
 
 // s3 setup
 const bucketName = "golden-image-bucket432";
-let s3Online = true;
-
-s3.createBucket({ Bucket: bucketName })
-  .promise()
-  .then(() => console.log(`Created bucket: ${bucketName}`))
-  .catch((err) => {
-    // We will ignore 409 errors which indicate that the bucket already exists
-    if (err.statusCode !== 409) {
-      console.log(`Error creating bucket: ${err}`);
-      s3Online = false;
-    }
-  });
 
 const getS3Image = (req, res, next) => {
-
-  if (!s3Online){
-    console.log('s3 is not online, serving image locally')
-    next()
-    return;
-  }
-
   const fileExtension = req.file.originalname.split(".")[1];
   const s3Key = req.query.key ? req.query.key : createKey(req);
 
   const params = { Bucket: bucketName, Key: s3Key };
-
-  s3.getSignedUrl;
 
   // Find if image exists in s3, if not create and store the image
   s3.getObject(params)
@@ -43,7 +22,9 @@ const getS3Image = (req, res, next) => {
       //Serve from s3
       res.json({
         message: `Served from s3`,
-        image: `https://${bucketName}.s3.amazonaws.com/${encodeURIComponent(s3Key)}`,
+        image: `https://${bucketName}.s3.amazonaws.com/${encodeURIComponent(
+          s3Key
+        )}`,
       });
 
       // Store in redis
@@ -53,12 +34,31 @@ const getS3Image = (req, res, next) => {
           3600, // Expire Key in 1 day
           JSON.stringify({
             message: `Served from redis`,
-            image: `https://${bucketName}.s3.amazonaws.com/${encodeURIComponent(s3Key)}`,
+            image: `https://${bucketName}.s3.amazonaws.com/${encodeURIComponent(
+              s3Key
+            )}`,
           })
         )
         .catch((e) => console.log(e));
     })
     .catch(async (err) => {
+      if (err.code === "NoSuchBucket") {
+        s3.createBucket({ Bucket: bucketName })
+          .promise()
+          .then(() => console.log(`Created bucket: ${bucketName}`))
+          .catch((err) => {
+            // We will ignore 409 errors which indicate that the bucket already exists
+            if (err.statusCode !== 409) {
+              console.log(`Error creating bucket: ${err}`);
+              s3Online = false;
+            }
+
+            console.log("s3 is not online, serving image locally");
+            next();
+            return;
+          });
+      }
+
       if (err.statusCode === 404) {
         // Generate Image
 
@@ -104,7 +104,9 @@ const getS3Image = (req, res, next) => {
                     3600, // Expire key in 1 day
                     JSON.stringify({
                       message: `Served from redis`,
-                      image: `https://${bucketName}.s3.amazonaws.com/${encodeURIComponent(s3Key)}`,
+                      image: `https://${bucketName}.s3.amazonaws.com/${encodeURIComponent(
+                        s3Key
+                      )}`,
                     })
                   )
                   .catch((e) => console.log(e));

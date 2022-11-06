@@ -4,14 +4,14 @@ const { createKey } = require("../utils/create-key");
 
 const redisClient = redis.createClient(
   {
-  url: process.env.REDIS_ENDPOINT,
+  url: "redis://golden-image-cache-demo.km2jzi.0001.apse2.cache.amazonaws.com:6379",
 }
 );
 
 let redisOnline = true;
 
 redisClient.connect().catch((err) => {
-  console.log(err);
+  console.log('Redis connection failed');
   redisOnline = false;
 });
 
@@ -24,6 +24,21 @@ const getCacheImage = (req, res, next) => {
     console.log(`Checking s3`);
     req.query.key = redisKey;
     next();
+
+    const redisClient = redis.createClient(
+      {
+      url: "redis://golden-image-cache-demo.km2jzi.0001.apse2.cache.amazonaws.com:6379",
+    }
+    );
+    
+    redisOnline = true;
+    
+    redisClient.connect().catch((err) => {
+      console.log('Redis connection failed');
+      redisOnline = false;
+    });
+
+    return;
   } else {
     redisClient.get(redisKey).then((result) => {
       if (result) {
