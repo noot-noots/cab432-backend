@@ -14,6 +14,7 @@ A highly scalable image editor web application hosted in AWS using serverless ar
 ## Backend
 - Express.Js
 - Javascript
+- Docker-compose
 - Hosted in AWS
     - Redis + S3 bucket - to store images
     - Load Balancer - to balance load between multiple instances
